@@ -20,13 +20,14 @@ import android.content.Context
 import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.demo.FrameMetadata
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.kotlin.VisionProcessorBase
 import com.google.mlkit.vision.objects.DetectedObject
 import com.google.mlkit.vision.objects.ObjectDetection
 import com.google.mlkit.vision.objects.ObjectDetector
 import com.google.mlkit.vision.objects.ObjectDetectorOptionsBase
-import java.io.IOException
+import java.nio.ByteBuffer
 
 /** A processor to run object detector.  */
 class ObjectDetectorProcessor(context: Context, options: ObjectDetectorOptionsBase) :
@@ -36,15 +37,7 @@ class ObjectDetectorProcessor(context: Context, options: ObjectDetectorOptionsBa
 
     override fun stop() {
         super.stop()
-        try {
-            detector.close()
-        } catch (e: IOException) {
-            Log.e(
-                    TAG,
-                    "Exception thrown while trying to close object detector!",
-                    e
-            )
-        }
+        detector.close()
     }
 
     override fun detectInImage(image: InputImage): Task<List<DetectedObject>> {
@@ -57,11 +50,5 @@ class ObjectDetectorProcessor(context: Context, options: ObjectDetectorOptionsBa
         }
     }
 
-    override fun onFailure(e: Exception) {
-        Log.e(TAG, "Object detection failed!", e)
-    }
-
-    companion object {
-        private const val TAG = "ObjectDetectorProcessor"
-    }
+    override fun onFailure(e: Exception) {}
 }

@@ -16,18 +16,9 @@
 
 package com.google.mlkit.vision.demo.kotlin
 
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.CompoundButton
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.android.gms.common.annotation.KeepName
 import com.google.mlkit.common.model.LocalModel
 import com.google.mlkit.vision.demo.CameraSource
@@ -35,103 +26,50 @@ import com.google.mlkit.vision.demo.CameraSourcePreview
 import com.google.mlkit.vision.demo.GraphicOverlay
 import com.google.mlkit.vision.demo.R
 import com.google.mlkit.vision.demo.kotlin.objectdetector.ObjectDetectorProcessor
-import com.google.mlkit.vision.demo.preference.PreferenceUtils
-import com.google.mlkit.vision.demo.preference.SettingsActivity
-import com.google.mlkit.vision.demo.preference.SettingsActivity.LaunchSource
-import java.io.IOException
-import java.util.*
+import com.google.mlkit.vision.objects.ObjectDetectorOptionsBase
+import com.google.mlkit.vision.objects.custom.CustomObjectDetectorOptions
 
 /** Live preview demo for ML Kit APIs.  */
 @KeepName
-class LivePreviewActivity :
-        AppCompatActivity(),
-        ActivityCompat.OnRequestPermissionsResultCallback{
+class LivePreviewActivity : AppCompatActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
 
     private var cameraSource: CameraSource? = null
     private var preview: CameraSourcePreview? = null
     private var graphicOverlay: GraphicOverlay? = null
-    private var selectedModel = OBJECT_DETECTION_CUSTOM
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate")
+
         setContentView(R.layout.activity_live_preview)
 
         preview = findViewById(R.id.preview)
-        if (preview == null) {
-            Log.d(TAG, "Preview is null")
-        }
 
         graphicOverlay = findViewById(R.id.graphic_overlay)
-        if (graphicOverlay == null) {
-            Log.d(TAG, "graphicOverlay is null")
-        }
 
-        if (allPermissionsGranted()) {
-            createCameraSource(selectedModel)
-        } else {
-            runtimePermissions
-        }
+        createCameraSource()
     }
 
-    private fun createCameraSource(model: String) {
+    private fun createCameraSource() {
         // If there's no existing cameraSource, create one.
         if (cameraSource == null) {
             cameraSource = CameraSource(this, graphicOverlay)
         }
-        try {
-            when (model) {
-                OBJECT_DETECTION_CUSTOM -> {
-                    Log.i(
-                            TAG,
-                            "Using Custom Object Detector Processor"
-                    )
-                    val localModel = LocalModel.Builder()
-                            .setAssetFilePath("custom_models/modemHeadset.tflite")
-                            .build()
-                    val customObjectDetectorOptions = PreferenceUtils.getCustomObjectDetectorOptionsForLivePreview(this, localModel)
-                    cameraSource!!.setMachineLearningFrameProcessor(ObjectDetectorProcessor(this, customObjectDetectorOptions)
-                    )
-                }
-                else -> Log.e(TAG, "Unknown model: $model")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Can not create image processor: $model", e)
-            Toast.makeText(
-                    applicationContext, "Can not create image processor: " + e.message,
-                    Toast.LENGTH_LONG
-            ).show()
-        }
-    }
+        val localModel = LocalModel.Builder().setAssetFilePath("custom_models/modemHeadsetAUTOML.tflite").build()
 
-    /**
-     * Starts or restarts the camera source, if it exists. If the camera source doesn't exist yet
-     * (e.g., because onResume was called before the camera source was created), this will be called
-     * again when the camera source is created.
-     */
-    private fun startCameraSource() {
-        if (cameraSource != null) {
-            try {
-                if (preview == null) {
-                    Log.d(TAG, "resume: Preview is null")
-                }
-                if (graphicOverlay == null) {
-                    Log.d(TAG, "resume: graphOverlay is null")
-                }
-                preview!!.start(cameraSource, graphicOverlay)
-            } catch (e: IOException) {
-                Log.e(TAG, "Unable to start camera source.", e)
-                cameraSource!!.release()
-                cameraSource = null
-            }
-        }
+        val builder = CustomObjectDetectorOptions.Builder(localModel).setDetectorMode(ObjectDetectorOptionsBase.STREAM_MODE)
+                .enableClassification()
+        val customObjectDetectorOptions = builder.build()
+
+        cameraSource!!.setMachineLearningFrameProcessor(ObjectDetectorProcessor(this, customObjectDetectorOptions)
+        )
     }
 
     public override fun onResume() {
         super.onResume()
-        Log.d(TAG, "onResume")
-        createCameraSource(selectedModel)
-        startCameraSource()
+        createCameraSource()
+        if (cameraSource != null) {
+            preview!!.start(cameraSource, graphicOverlay)
+        }
     }
 
     /** Stops the camera.  */
@@ -144,77 +82,6 @@ class LivePreviewActivity :
         super.onDestroy()
         if (cameraSource != null) {
             cameraSource?.release()
-        }
-    }
-
-    private val requiredPermissions: Array<String?>
-        get() = try {
-            val info = this.packageManager
-                    .getPackageInfo(this.packageName, PackageManager.GET_PERMISSIONS)
-            val ps = info.requestedPermissions
-            if (ps != null && ps.isNotEmpty()) {
-                ps
-            } else {
-                arrayOfNulls(0)
-            }
-        } catch (e: Exception) {
-            arrayOfNulls(0)
-        }
-
-    private fun allPermissionsGranted(): Boolean {
-        for (permission in requiredPermissions) {
-            if (!isPermissionGranted(this, permission)) {
-                return false
-            }
-        }
-        return true
-    }
-
-    private val runtimePermissions: Unit
-        get() {
-            val allNeededPermissions: MutableList<String?> = ArrayList()
-            for (permission in requiredPermissions) {
-                if (!isPermissionGranted(this, permission)) {
-                    allNeededPermissions.add(permission)
-                }
-            }
-            if (allNeededPermissions.isNotEmpty()) {
-                ActivityCompat.requestPermissions(
-                        this,
-                        allNeededPermissions.toTypedArray(),
-                        PERMISSION_REQUESTS
-                )
-            }
-        }
-
-    override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<String>,
-            grantResults: IntArray
-    ) {
-        Log.i(TAG, "Permission granted!")
-        if (allPermissionsGranted()) {
-            createCameraSource(selectedModel)
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-    companion object {
-        private const val OBJECT_DETECTION_CUSTOM = "Custom Object Detection"
-        private const val TAG = "LivePreviewActivity"
-        private const val PERMISSION_REQUESTS = 1
-        private fun isPermissionGranted(
-                context: Context,
-                permission: String?
-        ): Boolean {
-            if (ContextCompat.checkSelfPermission(context, permission!!)
-                    == PackageManager.PERMISSION_GRANTED
-            ) {
-                Log.i(TAG, "Permission granted: $permission")
-                return true
-            }
-            Log.i(TAG, "Permission NOT granted: $permission")
-            return false
         }
     }
 }

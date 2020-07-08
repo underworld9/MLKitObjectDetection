@@ -25,7 +25,6 @@ import android.view.SurfaceView;
 import android.view.ViewGroup;
 
 import com.google.android.gms.common.images.Size;
-import com.google.mlkit.vision.demo.preference.PreferenceUtils;
 
 import java.io.IOException;
 
@@ -78,34 +77,21 @@ public class CameraSourcePreview extends ViewGroup {
         }
     }
 
-    public void release() {
-        if (cameraSource != null) {
-            cameraSource.release();
-            cameraSource = null;
-        }
-        surfaceView.getHolder().getSurface().release();
-    }
-
     private void startIfReady() throws IOException, SecurityException {
         if (startRequested && surfaceAvailable) {
-            if (PreferenceUtils.isCameraLiveViewportEnabled(context)) {
-                cameraSource.start(surfaceView.getHolder());
-            } else {
-                cameraSource.start();
-            }
+            cameraSource.start(surfaceView.getHolder());
             requestLayout();
 
             if (overlay != null) {
                 Size size = cameraSource.getPreviewSize();
                 int min = Math.min(size.getWidth(), size.getHeight());
                 int max = Math.max(size.getWidth(), size.getHeight());
-                boolean isImageFlipped = cameraSource.getCameraFacing() == CameraSource.CAMERA_FACING_FRONT;
                 if (isPortraitMode()) {
                     // Swap width and height sizes when in portrait, since it will be rotated by 90 degrees.
                     // The camera preview and the image being processed have the same size.
-                    overlay.setImageSourceInfo(min, max, isImageFlipped);
+                    overlay.setImageSourceInfo(min, max);
                 } else {
-                    overlay.setImageSourceInfo(max, min, isImageFlipped);
+                    overlay.setImageSourceInfo(max, min);
                 }
                 overlay.clear();
             }

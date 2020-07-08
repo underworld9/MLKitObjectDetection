@@ -48,10 +48,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".preference.SettingsActivity"
-            android:exported="false"/>
-
     </application>
 
 </manifest>

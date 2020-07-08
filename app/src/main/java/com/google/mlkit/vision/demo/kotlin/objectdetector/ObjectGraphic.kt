@@ -91,7 +91,7 @@ class ObjectGraphic constructor(
         canvas.drawRect(rect, boxPaints[colorID])
 
         // Draws other object info.
-        val left = if (isImageFlipped) rect.right else rect.left
+        val left = rect.left
         canvas.drawRect(
                 left - STROKE_WIDTH,
                 rect.top + yLabelOffset,
